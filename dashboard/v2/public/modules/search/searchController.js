@@ -31,6 +31,70 @@ angular.module('dgc.search').controller('SearchController', ['$scope', '$locatio
         $scope.setPage = function(pageNo) {
             $scope.currentPage = pageNo;
         };
+        console.log($scope.query);
+        debugger;
+        if($scope.query!==undefined && $scope.query.indexOf("*")!== -1 )
+
+        {
+
+            $scope.fulltextsearch = function(query) {
+                $scope.results = [];
+                NotificationService.reset();
+                $scope.limit = 4;
+                $scope.searchMessage = 'load-gif';
+
+                $scope.$parent.query = query;
+                SearchResource.search({
+                    query: query,verb:'fulltext',
+                }, function searchSuccess(response) {
+                    $scope.resultCount = response.count;
+                    $scope.results = response.results;
+                    $scope.resultRows = $scope.results;
+                    $scope.totalItems = $scope.resultCount;
+                    $scope.transformedResults = {};
+                    $scope.dataTransitioned = false;
+                    if (response.results.dataType && response.results.dataType.typeName.indexOf('__') === 0) {
+                        $scope.dataTransitioned = true;
+                        var attrDef = response.results.dataType.attributeDefinitions;
+                        angular.forEach(attrDef, function(value) {
+                            if (value.dataTypeName === '__IdType') {
+                                $scope.searchKey = value.name;
+                            }
+                        });
+                        $scope.transformedResults = $scope.filterResults();
+                    } else {
+                        $scope.transformedResults = $scope.resultRows;
+                    }
+                    if ($scope.results)
+                        $scope.searchMessage = $scope.resultCount + ' results matching your search query ' + $scope.query + ' were found';
+                    else
+                        $scope.searchMessage = '0 results matching your search query ' + $scope.query + ' were found';
+
+                    $scope.$watch('currentPage + itemsPerPage', function() {
+                        var begin = (($scope.currentPage - 1) * $scope.itemsPerPage),
+                            end = begin + $scope.itemsPerPage;
+                        if ($scope.transformedResults) $scope.filteredResults = $scope.transformedResults.slice(begin, end);
+                        $scope.pageCount = function() {
+                            return Math.ceil($scope.resultCount / $scope.itemsPerPage);
+                        };
+                        if ($scope.results.length < 1) {
+                            NotificationService.error('No Result found', false);
+                        }
+                    });
+                }, function searchError(err) {
+                    $scope.searchMessage = '0 results matching your search query ' + $scope.query + ' were found';
+                    NotificationService.error('Error occurred during executing search query, error status code = ' + err.status + ', status text = ' + err.statusText, false);
+                });
+                $state.go('search', {
+                    query: query
+                }, {
+                    location: 'replace'
+                });
+            };
+
+        }
+        else
+        {
         $scope.search = function(query) {
             $scope.results = [];
             NotificationService.reset();
@@ -85,7 +149,7 @@ angular.module('dgc.search').controller('SearchController', ['$scope', '$locatio
                 location: 'replace'
             });
         };
-
+        }
         $scope.filterResults = function() {
             var res = [];
             angular.forEach($scope.resultRows, function(value) {
