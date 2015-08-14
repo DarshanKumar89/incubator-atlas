@@ -31,19 +31,26 @@ angular.module('dgc.search').controller('SearchController', ['$scope', '$locatio
         $scope.setPage = function(pageNo) {
             $scope.currentPage = pageNo;
         };
-        $scope.search = function(query) {
+        console.log($scope.query);
+
+        $scope.search = function(query, verb) {
             $scope.results = [];
             NotificationService.reset();
             $scope.limit = 4;
             $scope.searchMessage = 'load-gif';
 
             $scope.$parent.query = query;
-            SearchResource.search({
+            var srchQryObj = {
                 query: query
-            }, function searchSuccess(response) {
+            };
+            if (verb !== undefined && verb !== '') {
+                srchQryObj.verb = verb;
+            }
+
+            SearchResource.search(srchQryObj, function searchSuccess(response) {
                 $scope.resultCount = response.count;
                 $scope.results = response.results;
-                $scope.resultRows = $scope.results.rows;
+                $scope.resultRows = (query.indexOf("*") !== -1) ? $scope.results : $scope.results.rows;
                 $scope.totalItems = $scope.resultCount;
                 $scope.transformedResults = {};
                 $scope.dataTransitioned = false;
@@ -59,7 +66,7 @@ angular.module('dgc.search').controller('SearchController', ['$scope', '$locatio
                 } else {
                     $scope.transformedResults = $scope.resultRows;
                 }
-                if ($scope.results.rows)
+                if ($scope.resultRows)
                     $scope.searchMessage = $scope.resultCount + ' results matching your search query ' + $scope.query + ' were found';
                 else
                     $scope.searchMessage = '0 results matching your search query ' + $scope.query + ' were found';
@@ -85,7 +92,6 @@ angular.module('dgc.search').controller('SearchController', ['$scope', '$locatio
                 location: 'replace'
             });
         };
-
         $scope.filterResults = function() {
             var res = [];
             angular.forEach($scope.resultRows, function(value) {
@@ -112,8 +118,12 @@ angular.module('dgc.search').controller('SearchController', ['$scope', '$locatio
         $scope.searchQuery = $location.search();
         $scope.query = ($location.search()).query;
         if ($scope.query) {
+            if ($scope.query !== undefined && $scope.query.indexOf("*") === -1) {
+                $scope.search($scope.query);
+            } else {
+                $scope.search($scope.query, 'fulltext');
+            }
 
-            $scope.search($scope.query);
         }
     }
 ]);
